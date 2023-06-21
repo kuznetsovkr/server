@@ -2,14 +2,23 @@ const express = require('express');
 const { Server } = require("socket.io");
 const { v4: uuidV4 } = require('uuid');
 const http = require('http');
+const corsMiddleware = require('./middlewaree/cors.middleware');
+
+
+const mongoose = require('mongoose')
+const authRouter = require('./authRouter')
 
 const app = express(); // initialize express
+
+app.use(corsMiddleware)
+app.use(express.json())
+app.use("/auth", authRouter)
 
 const server = http.createServer(app);
 
 
 // set port to value received from environment variable or 8080 if null
-const port = process.env.PORT || 8080 
+const port = process.env.PORT || 8080
 
 // upgrade http server to websocket server
 const io = new Server(server, {
@@ -17,6 +26,18 @@ const io = new Server(server, {
 });
 
 const rooms = new Map();
+
+const start = async () => {
+  try {
+    await mongoose.connect(`mongodb+srv://kuznetsovkr:F2PI9Lv60jHEc7wG@cluster0.4zxasb6.mongodb.net/?retryWrites=true&w=majority`)
+
+  } catch (e) {
+    console.log(e)
+  }
+}
+
+start()
+
 
 // io.connection
 io.on('connection', (socket) => {
@@ -32,7 +53,7 @@ io.on('connection', (socket) => {
   socket.on('createRoom', async (callback) => { // callback here refers to the callback function from the client passed as data
     const roomId = uuidV4(); // <- 1 create a new uuid
     await socket.join(roomId); // <- 2 make creating user join the room
-	 
+
     // set roomId as a key and roomData including players as value in the map
     rooms.set(roomId, { // <- 3
       roomId,
@@ -47,7 +68,7 @@ io.on('connection', (socket) => {
     // check if room exists and has a player waiting
     const room = rooms.get(args.roomId);
     let error, message;
-  
+
     if (!room) { // if room does not exist
       error = true;
       message = 'room does not exist';
@@ -61,7 +82,7 @@ io.on('connection', (socket) => {
 
     if (error) {
       // if there's an error, check if the client passed a callback,
-      // call the callback (if it exists) with an error object and exit or 
+      // call the callback (if it exists) with an error object and exit or
       // just exit if the callback is not given
 
       if (callback) { // if user passed a callback, call it with an error payload
