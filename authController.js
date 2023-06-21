@@ -60,12 +60,16 @@ class authController {
         }
     }
 
-    async getUsers(req, res) {
+    async auth (req, res){
         try {
-            const users = await User.find()
-            res.json(users)
+            const user = await User.findOne({_id: req.user.id})
+            const token = generateAccessToken(user._id, user.roles)
+            return res.json({
+                token
+            })
         } catch (e) {
             console.log(e)
+            res.status(400).json({message: 'Auth error'})
         }
     }
 }
